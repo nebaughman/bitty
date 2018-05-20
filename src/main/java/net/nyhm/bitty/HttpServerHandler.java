@@ -2,17 +2,19 @@ package net.nyhm.bitty;
 
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
-public class HttpServerHandler extends SimpleChannelInboundHandler<Object>
+public class HttpServerHandler extends ChannelInboundHandlerAdapter
 {
     private static final Logger log = LoggerFactory.getLogger(HttpServerHandler.class);
 
@@ -35,11 +37,16 @@ public class HttpServerHandler extends SimpleChannelInboundHandler<Object>
     //protected void messageReceived(ChannelHandlerContext ctx, Object msg)
     //
     @Override
-    protected void channelRead0(ChannelHandlerContext ctx, Object msg)
+    public void channelRead(ChannelHandlerContext ctx, Object msg)
     {
-        if (msg instanceof HttpRequest)
-        {
-            processRequest(ctx, (HttpRequest)msg);
+        try {
+            if (msg instanceof HttpRequest) {
+                processRequest(ctx, (HttpRequest) msg);
+            } else {
+                log.warn("Unexpected message type received", msg.getClass());
+            }
+        } finally {
+            ReferenceCountUtil.release(msg);
         }
     }
 

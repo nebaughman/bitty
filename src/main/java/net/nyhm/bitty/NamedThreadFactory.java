@@ -15,6 +15,6 @@ final class NamedThreadFactory implements ThreadFactory
 
   @Override
   public Thread newThread(Runnable r) {
-    return new Thread(mName);
+    return new Thread(r, mName);
   }
 }

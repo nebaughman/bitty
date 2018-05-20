@@ -2,6 +2,7 @@ package net.nyhm.bitty;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -49,15 +50,14 @@ public final class HttpServer
         {
             ServerBootstrap b = new ServerBootstrap();
 
-            b.option(ChannelOption.SO_KEEPALIVE, true);
-            b.option(ChannelOption.TCP_NODELAY, true);
-
             b.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
-                .childHandler(new HttpServerInitializer(mLogic, mSSL));
+                .childHandler(new HttpServerInitializer(mLogic, mSSL))
+                .childOption(ChannelOption.SO_KEEPALIVE, true);
+                //.option(ChannelOption.TCP_NODELAY, true);
 
-            log.info("Listening on port " + mPort);
             mChannel = b.bind(mPort).sync().channel();
+            log.info("Listening on " + mChannel.localAddress());
             mChannel.closeFuture().sync();
         }
         finally
