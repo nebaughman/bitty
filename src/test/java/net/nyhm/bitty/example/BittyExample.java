@@ -1,9 +1,7 @@
 package net.nyhm.bitty.example;
 
-import net.nyhm.bitty.ClientRequest;
-import net.nyhm.bitty.HttpServer;
-import net.nyhm.bitty.ServerLogic;
-import net.nyhm.bitty.ServerResponse;
+import io.netty.util.CharsetUtil;
+import net.nyhm.bitty.*;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -20,15 +18,19 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import static org.junit.Assert.assertEquals;
+
 public class BittyExample
 {
   private static final Logger log = LoggerFactory.getLogger(BittyExample.class);
 
   private static final int PORT = 8888;
 
+  private static final String MESSAGE = "Hello";
+
   @Test
   public void runExample() throws Exception {
-    ServerLogic serverLogic = new ExampleServerLogic("Hello");
+    ServerLogic serverLogic = new ExampleServerLogic(MESSAGE);
     HttpServer server = new HttpServer(serverLogic, PORT, 1, 1);
 
     ExecutorService exec = Executors.newSingleThreadExecutor();
@@ -54,12 +56,12 @@ public class BittyExample
       HttpResponse response = client.execute(request);
       HttpEntity entity = response.getEntity();
       String content = EntityUtils.toString(entity);
-      System.out.println(content);
+      assertEquals(content, MESSAGE);
     }
 
     server.stop();
     future.cancel(true);
-    exec.shutdownNow();
+    exec.shutdown();
   }
 
   private static final class ExampleServerLogic implements ServerLogic
@@ -71,9 +73,13 @@ public class BittyExample
     }
 
     @Override
-    public void processRequest(ClientRequest request, ServerResponse response) {
+    public void processRequest(ClientRequest request, ServerResponse response) throws Exception {
       log.info("Client request");
       request.logRequest();
+      response.setContentType(new ContentType(
+          new MimeType("text", "plain"),
+          CharsetUtil.UTF_8
+      ));
       response.respond(responseMessage);
     }
   }

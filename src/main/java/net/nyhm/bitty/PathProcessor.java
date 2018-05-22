@@ -29,6 +29,7 @@ public final class PathProcessor implements ServerLogic
 
     @Override
     public void processRequest(ClientRequest request, ServerResponse response)
+        throws Exception
     {
         ServerLogic logic = mLogic.get(request.getPath());
         if (logic != null)
@@ -37,7 +38,7 @@ public final class PathProcessor implements ServerLogic
         }
         else
         {
-            log.warn("Unkown path {}", request.getPath());
+            log.warn("Unknown path {}", request.getPath());
             response.respond("Unknown path", false);
         }
     }

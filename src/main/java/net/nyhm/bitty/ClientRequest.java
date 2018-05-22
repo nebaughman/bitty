@@ -3,6 +3,7 @@ package net.nyhm.bitty;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpUtil;
 import io.netty.handler.codec.http.QueryStringDecoder;
 import org.slf4j.LoggerFactory;
 
@@ -14,8 +15,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import static io.netty.handler.codec.http.HttpHeaders.isKeepAlive;
 
 public final class ClientRequest
 {
@@ -30,7 +29,7 @@ public final class ClientRequest
         mContext = ctx;
         mRequest = req;
 
-        QueryStringDecoder query = new QueryStringDecoder(req.getUri());
+        QueryStringDecoder query = new QueryStringDecoder(req.uri());
         mPath = Paths.get(query.path());
         mArgs = Collections.unmodifiableMap(getArgs(query));
     }
@@ -103,10 +102,10 @@ public final class ClientRequest
         log.append("] ");
 
         log.append("Keep-Alive:");
-        log.append(isKeepAlive(req));
+        log.append(HttpUtil.isKeepAlive(req));
         log.append(" ");
 
-        log.append(req.getUri());
+        log.append(req.uri());
 
         LoggerFactory.getLogger(ClientRequest.class).debug(log.toString());
     }

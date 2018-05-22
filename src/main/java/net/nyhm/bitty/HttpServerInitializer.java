@@ -5,10 +5,7 @@ import io.netty.channel.ChannelPipeline;
 
 import io.netty.channel.socket.SocketChannel;
 
-import io.netty.handler.codec.http.HttpContentCompressor;
-import io.netty.handler.codec.http.HttpObjectAggregator;
-import io.netty.handler.codec.http.HttpRequestDecoder;
-import io.netty.handler.codec.http.HttpResponseEncoder;
+import io.netty.handler.codec.http.*;
 
 import io.netty.handler.ssl.SslHandler;
 
@@ -44,10 +41,9 @@ final class HttpServerInitializer extends ChannelInitializer<SocketChannel>
             p.addLast("ssl", new SslHandler(engine));
         }
 
-        p.addLast("decoder", new HttpRequestDecoder());
+        p.addLast("http", new HttpServerCodec());
         p.addLast("aggregator", new HttpObjectAggregator(MAX_HTTP_OBJECT_AGGREGATOR_LENGTH));
-        p.addLast("encoder", new HttpResponseEncoder());
-        p.addLast("deflater", new HttpContentCompressor());
+        p.addLast("compressor", new HttpContentCompressor());
         p.addLast("cors", new CorsHeadersChannelHandler());
         p.addLast("handler", new HttpServerHandler(mLogic));
     }

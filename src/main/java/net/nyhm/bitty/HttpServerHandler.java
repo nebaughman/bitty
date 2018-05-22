@@ -3,7 +3,6 @@ package net.nyhm.bitty;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.DefaultFullHttpResponse;
 import io.netty.handler.codec.http.FullHttpResponse;
 import io.netty.handler.codec.http.HttpRequest;
@@ -14,7 +13,11 @@ import org.slf4j.LoggerFactory;
 import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
-public class HttpServerHandler extends ChannelInboundHandlerAdapter
+/**
+ * This class is used as the top of the Netty protocol handling stack, acting as the
+ * bridge to the user-provided ServerLogic instance.
+ */
+final class HttpServerHandler extends ChannelInboundHandlerAdapter
 {
     private static final Logger log = LoggerFactory.getLogger(HttpServerHandler.class);
 
@@ -32,12 +35,8 @@ public class HttpServerHandler extends ChannelInboundHandlerAdapter
         ctx.flush();
     }
 
-    // TODO: Rename method in netty 5.0
-    //
-    //protected void messageReceived(ChannelHandlerContext ctx, Object msg)
-    //
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg)
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception
     {
         try {
             if (msg instanceof HttpRequest) {
@@ -50,9 +49,9 @@ public class HttpServerHandler extends ChannelInboundHandlerAdapter
         }
     }
 
-    private void processRequest(ChannelHandlerContext ctx, HttpRequest req)
+    private void processRequest(ChannelHandlerContext ctx, HttpRequest req) throws Exception
     {
-        if (req.getDecoderResult().isFailure()) // TODO: what other failure cases to handle here?
+        if (req.decoderResult().isFailure()) // TODO: what other failure cases to handle here?
         {
             FullHttpResponse response = new DefaultFullHttpResponse(HTTP_1_1, BAD_REQUEST);
             ctx.write(response).addListener(ChannelFutureListener.CLOSE);
