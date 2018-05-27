@@ -1,10 +1,8 @@
 package net.nyhm.bitty;
 
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.HttpHeaders;
-import io.netty.handler.codec.http.HttpRequest;
-import io.netty.handler.codec.http.HttpUtil;
-import io.netty.handler.codec.http.QueryStringDecoder;
+import io.netty.handler.codec.http.*;
+import io.netty.util.CharsetUtil;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
@@ -19,12 +17,12 @@ import java.util.Map;
 public final class ClientRequest
 {
     private final ChannelHandlerContext mContext;
-    private final HttpRequest mRequest;
+    private final FullHttpRequest mRequest;
 
     private final Path mPath;
     private final Map<String,String> mArgs;
 
-    ClientRequest(ChannelHandlerContext ctx, HttpRequest req)
+    ClientRequest(ChannelHandlerContext ctx, FullHttpRequest req)
     {
         mContext = ctx;
         mRequest = req;
@@ -43,6 +41,20 @@ public final class ClientRequest
     {
         return mArgs;
     }
+
+    /**
+     * Interpret the body of the request as a String. This is only for POST and PUT requests.
+     */
+    public String getBody() {
+        HttpMethod method = mRequest.method();
+        if (method == HttpMethod.POST || method == HttpMethod.PUT) {
+            return mRequest.content().toString(CharsetUtil.UTF_8); // TODO: Charset specified in headers?
+        } else {
+            return null; // no content in this method
+        }
+    }
+
+    // TODO: getContent() to expose raw bytes, also content type so handler can parse data
 
     public void logRequest()
     {

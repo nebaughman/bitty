@@ -1,8 +1,8 @@
 package net.nyhm.bitty.example.discard;
 
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +16,7 @@ public class DiscardServerHandler extends ChannelInboundHandlerAdapter {
   @Override
   public void channelRead(ChannelHandlerContext ctx, Object msg) {
     log.info("Received " + msg);
-    ((ByteBuf) msg).release(); // silently discard
+    ReferenceCountUtil.release(msg);
   }
 
   /**

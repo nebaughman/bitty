@@ -34,6 +34,8 @@ public final class ServerResponse
         mContentType = contentType;
     }
 
+    // TODO: Allow sending non-text responses
+
     public void respond(String responseBody)
     {
         respond(responseBody, true);

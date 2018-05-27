@@ -5,7 +5,9 @@ import net.nyhm.bitty.*;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.util.EntityUtils;
@@ -14,9 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import static org.junit.Assert.assertEquals;
 
@@ -29,58 +28,176 @@ public class BittyExample
   private static final String MESSAGE = "Hello";
 
   @Test
-  public void runExample() throws Exception {
-    ServerLogic serverLogic = new ExampleServerLogic(MESSAGE);
-    HttpServer server = new HttpServer(serverLogic, PORT, 1, 1);
+  public void testResponse() throws Exception {
+    ContentType contentType = new ContentType(
+        new MimeType("text", "plain"),
+        CharsetUtil.UTF_8
+    );
+    ServerLogic logic = new CannedResponseLogic(MESSAGE, contentType);
+    HttpServer server = new HttpServer(logic, PORT, 1, 1);
+    BittyService  service = new BittyService(server);
+    service.start();
+    assertEquals(MESSAGE, sendGet());
+    service.stop();
+  }
 
-    ExecutorService exec = Executors.newSingleThreadExecutor();
-    Future<?> future = exec.submit(() -> {
+  @Test
+  public void testEcho() throws Exception {
+    BittyService service = new BittyService(
+        new HttpServer(new EchoLogic(), PORT, 1, 1)
+    );
+    service.start();
+    String response = sendPost(MESSAGE);
+    log.info(response.getClass().getName());
+    assertEquals(MESSAGE, response);
+    service.stop();
+  }
+
+  @Test
+  public void testIgnore() throws Exception {
+    try (BittyService service = buildService(new IgnoreLogic())) {
+      service.start();
+      sendGet();
+    }
+  }
+
+  /**
+   * Test throwing an exception from ServerLogic. Server should continue to operate.
+   */
+  @Test
+  public void testException() throws Exception {
+    try (BittyService service = buildService(new FailOnce(new EchoLogic()))) {
+      service.start();
       try {
-        server.start();
+        log.info("Second attempt");
+        sendGet(); // this should fail (FailOnce logic)
       } catch (Exception e) {
-        log.warn("Exception in server", e);
-        server.stop();
+        log.info("Expected exception", e);
       }
-    });
+      log.info("Second attempt");
+      String response = sendPost(MESSAGE); // this should work
+      assertEquals(MESSAGE, response);
+    }
+  }
 
-    Thread.sleep(2000);
+  /**
+   * Send a GET request to the serverUri()
+   */
+  private static String sendGet() throws Exception {
+    try (CloseableHttpClient client = buildClient()) {
+      HttpGet request = new HttpGet(serverUri());
+      HttpResponse response = client.execute(request);
+      HttpEntity entity = response.getEntity();
+      String content = EntityUtils.toString(entity);
+      return content;
+    }
+  }
 
-    URI uri = new URIBuilder()
+  /**
+   * Send a POST request with the given body to the serverUri()
+   */
+  private static String sendPost(String body) throws Exception {
+    try (CloseableHttpClient client = buildClient()) {
+      HttpEntity entity = new StringEntity(body, CharsetUtil.UTF_8);
+      HttpPost request = new HttpPost(serverUri());
+      request.setEntity(entity);
+      HttpResponse response = client.execute(request);
+      String content = EntityUtils.toString(response.getEntity());
+      return content;
+    }
+  }
+
+  /**
+   * Test service endpoint
+   */
+  private static URI serverUri() throws Exception {
+    return new URIBuilder()
         .setScheme("http")
         .setHost("localhost")
         .setPort(PORT)
         .build();
-
-    try (CloseableHttpClient client = HttpClientBuilder.create().build()) {
-      HttpGet request = new HttpGet(uri);
-      HttpResponse response = client.execute(request);
-      HttpEntity entity = response.getEntity();
-      String content = EntityUtils.toString(entity);
-      assertEquals(content, MESSAGE);
-    }
-
-    server.stop();
-    future.cancel(true);
-    exec.shutdown();
   }
 
-  private static final class ExampleServerLogic implements ServerLogic
+  private static CloseableHttpClient buildClient() {
+    return HttpClientBuilder.create()
+        .disableAutomaticRetries()
+        .build();
+  }
+
+  private static BittyService buildService(ServerLogic logic) {
+    return new BittyService(new HttpServer(logic, PORT, 1, 1));
+  }
+
+  /**
+   * Always returns the specified content
+   */
+  private static final class CannedResponseLogic implements ServerLogic
   {
     private final String responseMessage;
+    private final ContentType contentType;
 
-    ExampleServerLogic(String responseMessage) {
+    CannedResponseLogic(String responseMessage, ContentType contentType) {
       this.responseMessage = responseMessage;
+      this.contentType = contentType;
     }
 
     @Override
     public void processRequest(ClientRequest request, ServerResponse response) throws Exception {
       log.info("Client request");
       request.logRequest();
+      response.setContentType(contentType);
+      response.respond(responseMessage);
+    }
+  }
+
+  /**
+   * Echoes the content of the request body (only for POST)
+   */
+  private static final class EchoLogic implements ServerLogic {
+    @Override
+    public void processRequest(ClientRequest request, ServerResponse response) throws Exception {
+      String body = request.getBody();
+      log.info("Client request", body);
+      request.logRequest();
       response.setContentType(new ContentType(
           new MimeType("text", "plain"),
           CharsetUtil.UTF_8
       ));
-      response.respond(responseMessage);
+      response.respond(body);
+    }
+  }
+
+  /**
+   * Sends back empty content (otherwise ignored)
+   */
+  private static final class IgnoreLogic implements ServerLogic {
+    @Override
+    public void processRequest(ClientRequest request, ServerResponse response) throws Exception {
+      log.info("Ignoring request", request);
+      response.respond(""); // must respond, even with nothing
+    }
+  }
+
+  /**
+   * Fail the first client request, then proxy the rest to another ServerLogic
+   */
+  private static final class FailOnce implements ServerLogic
+  {
+    private int mFailCount = 0;
+    private ServerLogic mFallback;
+
+    FailOnce(ServerLogic fallback) {
+      mFallback = fallback;
+    }
+
+    @Override
+    public void processRequest(ClientRequest request, ServerResponse response) throws Exception {
+      if (mFailCount < 1) {
+        mFailCount++;
+        throw new Exception("Testing exception");
+      } else {
+        mFallback.processRequest(request, response);
+      }
     }
   }
 }
