@@ -8,7 +8,9 @@ Bitty is intended to be used for handling HTTP(S) requests. For example, you cou
 
 The primary benefit of using Bitty is that it provides an HTTP(S) stack, passing `ClientRequest` and `ServerResponse` objects to a `ServerLogic` implementation for handling. Provide your own `ServerLogic` implementation to respond to messages.
 
-## Considerations
+## Caveats
+
+> This is very much a work-in-progress development release!
 
 Bitty itself does not (yet?) include its own _routing_ logic, but a `ServerLogic` implementation could be built to interpret the `ClientRequest` path and dispatch to other registered logic instances, for example.
 

@@ -4,7 +4,7 @@ plugins {
 
 group 'net.nyhm.bitty'
 
-version '0.0-SNAPSHOT'
+version '0.1.0-alpha'
 
 sourceCompatibility = 1.8
 
