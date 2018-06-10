@@ -2,8 +2,9 @@ plugins {
     id 'java'
 }
 
-group 'net.nyhm'
-version '0.0-dev'
+group 'net.nyhm.bitty'
+
+version '0.0-SNAPSHOT'
 
 sourceCompatibility = 1.8
 
