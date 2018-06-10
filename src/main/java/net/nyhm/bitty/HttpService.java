@@ -6,29 +6,32 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.*;
 
 /**
- * BittyService maintains a running server, restarting if the server fails.
+ * HttpService maintains a running server, restarting if the server fails.
  */
-public class BittyService implements AutoCloseable {
+public class HttpService implements AutoCloseable {
 
-  private static final Logger log = LoggerFactory.getLogger(BittyService.class);
+  private static final Logger log = LoggerFactory.getLogger(HttpService.class);
 
   private final ExecutorService mExec = new RetryExecutor();
 
   private final ServerTask mTask;
 
-  public BittyService(HttpServer server) {
+  public HttpService(HttpServer server) {
     mTask = new ServerTask(server);
   }
 
   public void start() {
     log.info("Service starting");
     mExec.submit(mTask); // will retry task on exceptions
+    // TODO: Server should provide a Future so service can (optionally) block until server started
+    // Notice that running BittyExample tests can fail because server is being started asynchronously
+    // and client calls can be made before server is bound to port and listening.
   }
 
   public void stop() {
-    mTask.stop(); // tell any active server to stop
-    mExec.shutdown(); // signal executor service to shutdown
     try {
+      mTask.stop(); // tell any active server to stop
+      mExec.shutdown(); // signal executor service to shutdown
       if (!mExec.awaitTermination(16, TimeUnit.SECONDS)) {
         mExec.shutdownNow(); // give up and halt
       }
@@ -59,7 +62,7 @@ public class BittyService implements AutoCloseable {
       return null;
     }
 
-    void stop() {
+    void stop() throws InterruptedException {
       mServer.stop(); // TODO: catch Exception|Throwable, log (rather than throw)
     }
   }

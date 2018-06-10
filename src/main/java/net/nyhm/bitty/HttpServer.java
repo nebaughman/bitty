@@ -11,6 +11,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
 
+/**
+ * This class listens for connections and ultimately passes control to a ServerLogic implementation.
+ */
 public final class HttpServer
 {
     private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
@@ -37,6 +40,11 @@ public final class HttpServer
         mSSL = ssl;
     }
 
+    /**
+     * This method starts the server, which involves binding to the port and listening for connections.
+     * This method blocks until the server is stopped.
+     * To start the server in a non-blocking manner, consider running it in a HttpService.
+     */
     public void start() throws Exception
     {
         EventLoopGroup bossGroup = new NioEventLoopGroup(mBossThreads,
@@ -67,11 +75,15 @@ public final class HttpServer
         }
     }
 
-    public void stop()
+    /**
+     * Stop the server. This method blocks until the server stops (or is interrupted).
+     */
+    public void stop() throws InterruptedException
     {
         if (mChannel != null)
         {
             mChannel.close();
+            mChannel.closeFuture().sync();
         }
     }
 }

@@ -19,6 +19,12 @@ import java.net.URI;
 
 import static org.junit.Assert.assertEquals;
 
+// TODO: Notice that these tests often fail when run together, but will pass when run individually.
+//
+// One problem is timing between starting the service and calling it. See HttpService.start()
+// The service starts asynchronously. The start method needs to wait until the service is started,
+// or provide a Future for the caller to optionally await startup.
+
 public class BittyExample
 {
   private static final Logger log = LoggerFactory.getLogger(BittyExample.class);
@@ -35,7 +41,7 @@ public class BittyExample
     );
     ServerLogic logic = new CannedResponseLogic(MESSAGE, contentType);
     HttpServer server = new HttpServer(logic, PORT, 1, 1);
-    BittyService  service = new BittyService(server);
+    HttpService service = new HttpService(server);
     service.start();
     assertEquals(MESSAGE, sendGet());
     service.stop();
@@ -43,7 +49,7 @@ public class BittyExample
 
   @Test
   public void testEcho() throws Exception {
-    BittyService service = new BittyService(
+    HttpService service = new HttpService(
         new HttpServer(new EchoLogic(), PORT, 1, 1)
     );
     service.start();
@@ -55,7 +61,7 @@ public class BittyExample
 
   @Test
   public void testIgnore() throws Exception {
-    try (BittyService service = buildService(new IgnoreLogic())) {
+    try (HttpService service = buildService(new IgnoreLogic())) {
       service.start();
       sendGet();
     }
@@ -66,7 +72,7 @@ public class BittyExample
    */
   @Test
   public void testException() throws Exception {
-    try (BittyService service = buildService(new FailOnce(new EchoLogic()))) {
+    try (HttpService service = buildService(new FailOnce(new EchoLogic()))) {
       service.start();
       try {
         log.info("Second attempt");
@@ -124,8 +130,8 @@ public class BittyExample
         .build();
   }
 
-  private static BittyService buildService(ServerLogic logic) {
-    return new BittyService(new HttpServer(logic, PORT, 1, 1));
+  private static HttpService buildService(ServerLogic logic) {
+    return new HttpService(new HttpServer(logic, PORT, 1, 1));
   }
 
   /**
